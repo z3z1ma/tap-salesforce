@@ -3,21 +3,19 @@
 from setuptools import setup
 
 setup(name='tap-salesforce',
-      version='meltano.1.5.0',
+      version='1.5.1',
       description='Singer.io tap for extracting data from the Salesforce API',
       author='Stitch',
       url='https://singer.io',
       classifiers=['Programming Language :: Python :: 3 :: Only'],
       py_modules=['tap_salesforce'],
       install_requires=[
-          'requests==2.20.0',
-          'singer-python==5.3.1',
+          'requests>=2.20.0',
+          'singer-python>=5.3.1',
           'xmltodict==0.11.0',
-          'simple-salesforce<1.0', # v1.0 requires `requests==2.22.0`
+          'simple-salesforce>=1.0', # v1.0 requires `requests==2.22.0`
           # fix version conflicts, see https://gitlab.com/meltano/meltano/issues/193
-          'idna==2.7',
-          'cryptography',
-          'pyOpenSSL',
+          'idna>=2.7',
       ],
       entry_points='''
           [console_scripts]
