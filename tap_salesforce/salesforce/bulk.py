@@ -21,6 +21,7 @@ DEFAULT_CHUNK_SIZE = 50000
 
 LOGGER = singer.get_logger()
 
+
 # pylint: disable=inconsistent-return-statements
 def find_parent(stream):
     parent_stream = stream
@@ -39,7 +40,6 @@ def find_parent(stream):
 
 
 class Bulk:
-
     bulk_url = "{}/services/async/53.0/{}"
 
     def __init__(self, sf):
@@ -61,9 +61,7 @@ class Bulk:
         url = self.sf.data_url.format(self.sf.instance_url, endpoint)
 
         with metrics.http_request_timer(endpoint):
-            resp = self.sf._make_request(
-                "GET", url, headers=self.sf.auth.rest_headers
-            ).json()
+            resp = self.sf._make_request("GET", url, headers=self.sf.auth.rest_headers).json()
 
         quota_max = resp["DailyBulkApiBatches"]["Max"]
         max_requests_for_run = int((self.sf.quota_percent_per_run * quota_max) / 100)
@@ -111,9 +109,7 @@ class Bulk:
 
         if batch_status["state"] == "Failed":
             if "QUERY_TIMEOUT" in batch_status["stateMessage"]:
-                batch_status = self._bulk_query_with_pk_chunking(
-                    catalog_entry, start_date
-                )
+                batch_status = self._bulk_query_with_pk_chunking(catalog_entry, start_date)
                 job_id = batch_status["job_id"]
 
                 # Set pk_chunking to True to indicate that we should write a bookmark differently
@@ -127,25 +123,19 @@ class Bulk:
                 )
 
                 for completed_batch_id in batch_status["completed"]:
-                    for result in self.get_batch_results(
-                        job_id, completed_batch_id, catalog_entry
-                    ):
+                    for result in self.get_batch_results(job_id, completed_batch_id, catalog_entry):
                         yield result
                     # Remove the completed batch ID and write state
-                    state["bookmarks"][catalog_entry["tap_stream_id"]][
-                        "BatchIDs"
-                    ].remove(completed_batch_id)
+                    state["bookmarks"][catalog_entry["tap_stream_id"]]["BatchIDs"].remove(
+                        completed_batch_id
+                    )
                     LOGGER.info(
                         "Finished syncing batch %s. Removing batch from state.",
                         completed_batch_id,
                     )
                     LOGGER.info(
                         "Batches to go: %d",
-                        len(
-                            state["bookmarks"][catalog_entry["tap_stream_id"]][
-                                "BatchIDs"
-                            ]
-                        ),
+                        len(state["bookmarks"][catalog_entry["tap_stream_id"]]["BatchIDs"]),
                     )
                     singer.write_state(state)
             else:
@@ -166,9 +156,7 @@ class Bulk:
         batch_status["job_id"] = job_id
 
         if batch_status["failed"]:
-            raise TapSalesforceException(
-                "One or more batches failed during PK chunked job"
-            )
+            raise TapSalesforceException("One or more batches failed during PK chunked job")
 
         # Close the job after all the batches are complete
         self._close_job(job_id)
@@ -189,15 +177,10 @@ class Bulk:
         if pk_chunking:
             LOGGER.info("ADDING PK CHUNKING HEADER")
 
-            headers["Sforce-Enable-PKChunking"] = "true; chunkSize={}".format(
-                DEFAULT_CHUNK_SIZE
-            )
+            headers["Sforce-Enable-PKChunking"] = "true; chunkSize={}".format(DEFAULT_CHUNK_SIZE)
 
             # If the stream ends with 'CleanInfo' or 'History', we can PK Chunk on the object's parent
-            if any(
-                catalog_entry["stream"].endswith(suffix)
-                for suffix in ["CleanInfo", "History"]
-            ):
+            if any(catalog_entry["stream"].endswith(suffix) for suffix in ["CleanInfo", "History"]):
                 parent = find_parent(catalog_entry["stream"])
                 headers["Sforce-Enable-PKChunking"] = headers[
                     "Sforce-Enable-PKChunking"
@@ -205,9 +188,7 @@ class Bulk:
 
         with metrics.http_request_timer("create_job") as timer:
             timer.tags["sobject"] = catalog_entry["stream"]
-            resp = self.sf._make_request(
-                "POST", url, headers=headers, body=json.dumps(body)
-            )
+            resp = self.sf._make_request("POST", url, headers=headers, body=json.dumps(body))
 
         job = resp.json()
 
@@ -237,14 +218,10 @@ class Bulk:
 
         while True:
             queued_batches = [b["id"] for b in batches if b["state"] == "Queued"]
-            in_progress_batches = [
-                b["id"] for b in batches if b["state"] == "InProgress"
-            ]
+            in_progress_batches = [b["id"] for b in batches if b["state"] == "InProgress"]
 
             if not queued_batches and not in_progress_batches:
-                completed_batches = [
-                    b["id"] for b in batches if b["state"] == "Completed"
-                ]
+                completed_batches = [b["id"] for b in batches if b["state"] == "Completed"]
                 failed_batches = [b["id"] for b in batches if b["state"] == "Failed"]
                 return {"completed": completed_batches, "failed": failed_batches}
             else:
@@ -286,9 +263,9 @@ class Bulk:
         with metrics.http_request_timer("get_batches"):
             resp = self.sf._make_request("GET", url, headers=headers)
 
-        batches = xmltodict.parse(
-            resp.text, xml_attribs=False, force_list=("batchInfo",)
-        )["batchInfoList"]["batchInfo"]
+        batches = xmltodict.parse(resp.text, xml_attribs=False, force_list=("batchInfo",))[
+            "batchInfoList"
+        ]["batchInfo"]
 
         return batches
 
@@ -329,9 +306,7 @@ class Bulk:
 
             with tempfile.NamedTemporaryFile(mode="w+", encoding="utf8") as csv_file:
                 resp = self.sf._make_request("GET", url, headers=headers, stream=True)
-                for chunk in resp.iter_content(
-                    chunk_size=ITER_CHUNK_SIZE, decode_unicode=True
-                ):
+                for chunk in resp.iter_content(chunk_size=ITER_CHUNK_SIZE, decode_unicode=True):
                     if chunk:
                         # Replace any NULL bytes in the chunk so it can be safely given to the CSV reader
                         csv_file.write(chunk.replace("\0", ""))
@@ -362,9 +337,7 @@ class Bulk:
         from within a quoted value from the CSV stream."""
         pending = None
 
-        for chunk in response.iter_content(
-            decode_unicode=True, chunk_size=ITER_CHUNK_SIZE
-        ):
+        for chunk in response.iter_content(decode_unicode=True, chunk_size=ITER_CHUNK_SIZE):
             if pending is not None:
                 chunk = pending + chunk
 

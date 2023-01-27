@@ -63,7 +63,8 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
 
     if not bulk.job_exists(job_id):
         LOGGER.info(
-            "Found stored Job ID that no longer exists, resetting bookmark and removing JobID from state."
+            "Found stored Job ID that no longer exists, resetting bookmark and removing JobID from"
+            " state."
         )
         return counter
 
@@ -84,18 +85,15 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
                 )
 
                 # Update bookmark if necessary
-                replication_key_value = (
-                    replication_key
-                    and singer_utils.strptime_with_tz(rec[replication_key])
+                replication_key_value = replication_key and singer_utils.strptime_with_tz(
+                    rec[replication_key]
                 )
                 if (
                     replication_key_value
                     and replication_key_value <= start_time
                     and replication_key_value > current_bookmark
                 ):
-                    current_bookmark = singer_utils.strptime_with_tz(
-                        rec[replication_key]
-                    )
+                    current_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
 
         state = singer.write_bookmark(
             state,
@@ -126,9 +124,7 @@ def sync_stream(sf, catalog_entry, state, state_msg_threshold):
 
 
 def sync_records(sf, catalog_entry, state, counter, state_msg_threshold):
-    chunked_bookmark = singer_utils.strptime_with_tz(
-        sf.get_start_date(state, catalog_entry)
-    )
+    chunked_bookmark = singer_utils.strptime_with_tz(sf.get_start_date(state, catalog_entry))
     stream = catalog_entry["stream"]
     schema = catalog_entry["schema"]
     stream_alias = catalog_entry.get("stream_alias")
@@ -195,9 +191,7 @@ def sync_records(sf, catalog_entry, state, counter, state_msg_threshold):
     # activate_version message for the next sync
     if not replication_key:
         singer.write_message(activate_version_message)
-        state = singer.write_bookmark(
-            state, catalog_entry["tap_stream_id"], "version", None
-        )
+        state = singer.write_bookmark(state, catalog_entry["tap_stream_id"], "version", None)
 
     # If pk_chunking is set, only write a bookmark at the end
     if sf.pk_chunking:

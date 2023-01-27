@@ -142,9 +142,7 @@ QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(
 
 
 def log_backoff_attempt(details):
-    LOGGER.info(
-        "ConnectionError detected, triggering backoff: %d try", details.get("tries")
-    )
+    LOGGER.info("ConnectionError detected, triggering backoff: %d try", details.get("tries"))
 
 
 def field_to_property_schema(field, mdata):
@@ -182,9 +180,7 @@ def field_to_property_schema(field, mdata):
     elif sf_type in LOOSE_TYPES:
         return property_schema, mdata  # No type = all types
     elif sf_type in BINARY_TYPES:
-        mdata = metadata.write(
-            mdata, ("properties", field_name), "inclusion", "unsupported"
-        )
+        mdata = metadata.write(mdata, ("properties", field_name), "inclusion", "unsupported")
         mdata = metadata.write(
             mdata, ("properties", field_name), "unsupported-description", "binary data"
         )
@@ -223,10 +219,7 @@ class Salesforce:
     ):
         self.api_type = api_type.upper() if api_type else None
         self.session = requests.Session()
-        if (
-            isinstance(quota_percent_per_run, str)
-            and quota_percent_per_run.strip() == ""
-        ):
+        if isinstance(quota_percent_per_run, str) and quota_percent_per_run.strip() == "":
             quota_percent_per_run = None
         if isinstance(quota_percent_total, str) and quota_percent_total.strip() == "":
             quota_percent_total = None
@@ -241,8 +234,7 @@ class Salesforce:
             isinstance(is_sandbox, str) and is_sandbox.lower() == "true"
         )
         self.select_fields_by_default = select_fields_by_default is True or (
-            isinstance(select_fields_by_default, str)
-            and select_fields_by_default.lower() == "true"
+            isinstance(select_fields_by_default, str) and select_fields_by_default.lower() == "true"
         )
         self.default_start_date = default_start_date
         self.rest_requests_attempted = 0
@@ -250,9 +242,7 @@ class Salesforce:
         self.data_url = "{}/services/data/v53.0/{}"
         self.pk_chunking = False
 
-        self.auth = SalesforceAuth.from_credentials(
-            credentials, is_sandbox=self.is_sandbox
-        )
+        self.auth = SalesforceAuth.from_credentials(credentials, is_sandbox=self.is_sandbox)
 
         # validate start_date
         singer_utils.strptime(default_start_date)
@@ -277,9 +267,7 @@ class Salesforce:
                 + "used across all Salesforce Applications. Terminating "
                 + "replication to not continue past configured percentage "
                 + "of {}% total quota."
-            ).format(
-                remaining, allotted, percent_used_from_total, self.quota_percent_total
-            )
+            ).format(remaining, allotted, percent_used_from_total, self.quota_percent_total)
             raise TapSalesforceQuotaExceededException(total_message)
         elif self.rest_requests_attempted > max_requests_for_run:
             partial_message = (
@@ -308,13 +296,9 @@ class Salesforce:
         factor=2,
         on_backoff=log_backoff_attempt,
     )
-    def _make_request(
-        self, http_method, url, headers=None, body=None, stream=False, params=None
-    ):
+    def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None):
         if http_method == "GET":
-            LOGGER.info(
-                "Making %s request to %s with params: %s", http_method, url, params
-            )
+            LOGGER.info("Making %s request to %s with params: %s", http_method, url, params)
             resp = self.session.get(url, headers=headers, stream=stream, params=params)
         elif http_method == "POST":
             LOGGER.info("Making %s request to %s with body %s", http_method, url, body)
@@ -373,14 +357,10 @@ class Salesforce:
             or self.default_start_date
         )
 
-    def _build_query_string(
-        self, catalog_entry, start_date, end_date=None, order_by_clause=True
-    ):
+    def _build_query_string(self, catalog_entry, start_date, end_date=None, order_by_clause=True):
         selected_properties = self._get_selected_properties(catalog_entry)
 
-        query = "SELECT {} FROM {}".format(
-            ",".join(selected_properties), catalog_entry["stream"]
-        )
+        query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry["stream"])
 
         catalog_metadata = metadata.to_map(catalog_entry["metadata"])
         replication_key = catalog_metadata.get((), {}).get("replication-key")
@@ -418,9 +398,7 @@ class Salesforce:
                 QUERY_RESTRICTED_SALESFORCE_OBJECTS
             ).union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
         elif self.api_type == REST_API_TYPE:
-            return QUERY_RESTRICTED_SALESFORCE_OBJECTS.union(
-                QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS
-            )
+            return QUERY_RESTRICTED_SALESFORCE_OBJECTS.union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
         else:
             raise TapSalesforceException(
                 "api_type should be REST or BULK was: {}".format(self.api_type)

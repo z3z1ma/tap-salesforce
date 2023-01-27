@@ -55,10 +55,7 @@ class Rest:
 
         except HTTPError as ex:
             response = ex.response.json()
-            if (
-                isinstance(response, list)
-                and response[0].get("errorCode") == "QUERY_TIMEOUT"
-            ):
+            if isinstance(response, list) and response[0].get("errorCode") == "QUERY_TIMEOUT":
                 start_date = singer_utils.strptime_with_tz(start_date_str)
                 day_range = (end_date - start_date).days
                 LOGGER.info(

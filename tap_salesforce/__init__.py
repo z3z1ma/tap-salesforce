@@ -19,11 +19,7 @@ from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException,
     TapSalesforceQuotaExceededException,
 )
-from tap_salesforce.sync import (
-    get_stream_version,
-    resume_syncing_bulk_query,
-    sync_stream,
-)
+from tap_salesforce.sync import get_stream_version, resume_syncing_bulk_query, sync_stream
 
 LOGGER = singer.get_logger()
 
@@ -51,9 +47,7 @@ CONFIG = {
     "start_date": None,
 }
 
-FORCED_FULL_TABLE = {
-    "BackgroundOperationResult"  # Does not support ordering by CreatedDate
-}
+FORCED_FULL_TABLE = {"BackgroundOperationResult"}  # Does not support ordering by CreatedDate
 
 
 def get_replication_key(sobject_name, fields):
@@ -102,9 +96,7 @@ def build_state(raw_state, catalog):
 
         if replication_method == "INCREMENTAL":
             replication_key = catalog_metadata.get((), {}).get("replication-key")
-            replication_key_value = singer.get_bookmark(
-                raw_state, tap_stream_id, replication_key
-            )
+            replication_key_value = singer.get_bookmark(raw_state, tap_stream_id, replication_key)
             if version is not None:
                 state = singer.write_bookmark(state, tap_stream_id, "version", version)
             if replication_key_value is not None:
@@ -122,13 +114,9 @@ def create_property_schema(field, mdata):
     field_name = field["name"]
 
     if field_name == "Id":
-        mdata = metadata.write(
-            mdata, ("properties", field_name), "inclusion", "automatic"
-        )
+        mdata = metadata.write(mdata, ("properties", field_name), "inclusion", "automatic")
     else:
-        mdata = metadata.write(
-            mdata, ("properties", field_name), "inclusion", "available"
-        )
+        mdata = metadata.write(mdata, ("properties", field_name), "inclusion", "available")
 
     property_schema, mdata = salesforce.field_to_property_schema(field, mdata)
 
@@ -149,12 +137,9 @@ def do_discover(sf):
     # For each SF Object describe it, loop its fields and build a schema
     entries = []
     for sobject_name in objects_to_discover:
-
         # Skip blacklisted SF objects depending on the api_type in use
         # ChangeEvent objects are not queryable via Bulk or REST (undocumented)
-        if sobject_name in sf.get_blacklisted_objects() or sobject_name.endswith(
-            "ChangeEvent"
-        ):
+        if sobject_name in sf.get_blacklisted_objects() or sobject_name.endswith("ChangeEvent"):
             continue
 
         sobject_description = sf.describe(sobject_name)
@@ -165,18 +150,12 @@ def do_discover(sf):
             sf_custom_setting_objects.append(sobject_name)
         elif sobject_name.endswith("__Tag"):
             relationship_field = next(
-                (
-                    f
-                    for f in sobject_description["fields"]
-                    if f.get("relationshipName") == "Item"
-                ),
+                (f for f in sobject_description["fields"] if f.get("relationshipName") == "Item"),
                 None,
             )
             if relationship_field:
                 # Map {"Object":"Object__Tag"}
-                object_to_tag_references[
-                    relationship_field["referenceTo"][0]
-                ] = sobject_name
+                object_to_tag_references[relationship_field["referenceTo"][0]] = sobject_name
 
         fields = sobject_description["fields"]
         replication_key = get_replication_key(sobject_name, fields)
@@ -198,10 +177,7 @@ def do_discover(sf):
             property_schema, mdata = create_property_schema(f, mdata)
 
             # Compound Address fields cannot be queried by the Bulk API
-            if (
-                f["type"] == "address"
-                and sf.api_type == tap_salesforce.salesforce.BULK_API_TYPE
-            ):
+            if f["type"] == "address" and sf.api_type == tap_salesforce.salesforce.BULK_API_TYPE:
                 unsupported_fields.add(
                     (field_name, "cannot query compound address fields with bulk API")
                 )
@@ -219,9 +195,7 @@ def do_discover(sf):
             # Blacklisted fields are dependent on the api_type being used
             field_pair = (sobject_name, field_name)
             if field_pair in sf.get_blacklisted_fields():
-                unsupported_fields.add(
-                    (field_name, sf.get_blacklisted_fields()[field_pair])
-                )
+                unsupported_fields.add((field_name, sf.get_blacklisted_fields()[field_pair]))
 
             inclusion = metadata.get(mdata, ("properties", field_name), "inclusion")
 
@@ -233,23 +207,22 @@ def do_discover(sf):
             properties[field_name] = property_schema
 
         if replication_key:
-            mdata = metadata.write(
-                mdata, ("properties", replication_key), "inclusion", "automatic"
-            )
+            mdata = metadata.write(mdata, ("properties", replication_key), "inclusion", "automatic")
 
         # There are cases where compound fields are referenced by the associated
         # subfields but are not actually present in the field list
         field_name_set = {f["name"] for f in fields}
-        filtered_unsupported_fields = [
-            f for f in unsupported_fields if f[0] in field_name_set
-        ]
+        filtered_unsupported_fields = [f for f in unsupported_fields if f[0] in field_name_set]
         missing_unsupported_field_names = [
             f[0] for f in unsupported_fields if f[0] not in field_name_set
         ]
 
         if missing_unsupported_field_names:
             LOGGER.info(
-                "Ignoring the following unsupported fields for object %s as they are missing from the field list: %s",
+                (
+                    "Ignoring the following unsupported fields for object %s as they are missing"
+                    " from the field list: %s"
+                ),
                 sobject_name,
                 ", ".join(sorted(missing_unsupported_field_names)),
             )
@@ -263,9 +236,7 @@ def do_discover(sf):
 
         # Salesforce Objects are skipped when they do not have an Id field
         if not found_id_field:
-            LOGGER.info(
-                "Skipping Salesforce Object %s, as it has no Id field", sobject_name
-            )
+            LOGGER.info("Skipping Salesforce Object %s, as it has no Id field", sobject_name)
             continue
 
         # Any property added to unsupported_fields has metadata generated and
@@ -277,14 +248,10 @@ def do_discover(sf):
             mdata = metadata.write(
                 mdata, ("properties", prop), "unsupported-description", description
             )
-            mdata = metadata.write(
-                mdata, ("properties", prop), "inclusion", "unsupported"
-            )
+            mdata = metadata.write(mdata, ("properties", prop), "inclusion", "unsupported")
 
         if replication_key:
-            mdata = metadata.write(
-                mdata, (), "valid-replication-keys", [replication_key]
-            )
+            mdata = metadata.write(mdata, (), "valid-replication-keys", [replication_key])
             mdata = metadata.write(mdata, (), "replication-key", replication_key)
             mdata = metadata.write(mdata, (), "replication-method", "INCREMENTAL")
         else:
@@ -371,9 +338,7 @@ def is_property_selected(  # noqa: C901  # ignore 'too complex'
     parent_value = None
     if len(breadcrumb) > 0:
         parent_breadcrumb = tuple(list(breadcrumb)[:-2])
-        parent_value = is_property_selected(
-            stream_name, metadata_map, parent_breadcrumb
-        )
+        parent_value = is_property_selected(stream_name, metadata_map, parent_breadcrumb)
     if parent_value is False:
         return parent_value
 
@@ -384,8 +349,7 @@ def is_property_selected(  # noqa: C901  # ignore 'too complex'
     if inclusion == "unsupported":
         if selected is True:
             LOGGER.debug(
-                "Property '%s' was selected but is not supported. "
-                "Ignoring selected==True input.",
+                "Property '%s' was selected but is not supported. Ignoring selected==True input.",
                 ":".join(breadcrumb),
             )
         return False
@@ -393,8 +357,10 @@ def is_property_selected(  # noqa: C901  # ignore 'too complex'
     if inclusion == "automatic":
         if selected is False:
             LOGGER.debug(
-                "Property '%s' was deselected while also set "
-                "for automatic inclusion. Ignoring selected==False input.",
+                (
+                    "Property '%s' was deselected while also set "
+                    "for automatic inclusion. Ignoring selected==False input."
+                ),
                 ":".join(breadcrumb),
             )
         return True
@@ -406,8 +372,7 @@ def is_property_selected(  # noqa: C901  # ignore 'too complex'
         return selected_by_default
 
     LOGGER.debug(
-        "Selection metadata omitted for '%s':'%s'. "
-        "Using parent value of selected=%s.",
+        "Selection metadata omitted for '%s':'%s'. Using parent value of selected=%s.",
         stream_name,
         breadcrumb,
         parent_value,
@@ -456,9 +421,7 @@ async def sync_catalog_entry(sf, catalog_entry, state):
 
     singer.write_state(state)
     key_properties = (
-        metadata.to_map(catalog_entry["metadata"])
-        .get((), {})
-        .get("table-key-properties")
+        metadata.to_map(catalog_entry["metadata"]).get((), {}).get("table-key-properties")
     )
 
     # Filter the schema for selected fields
@@ -486,12 +449,8 @@ async def sync_catalog_entry(sf, catalog_entry, state):
                 counter,
             )
             LOGGER.info("Completed sync for %s", stream_name)
-            state.get("bookmarks", {}).get(catalog_entry["tap_stream_id"], {}).pop(
-                "JobID", None
-            )
-            state.get("bookmarks", {}).get(catalog_entry["tap_stream_id"], {}).pop(
-                "BatchIDs", None
-            )
+            state.get("bookmarks", {}).get(catalog_entry["tap_stream_id"], {}).pop("JobID", None)
+            state.get("bookmarks", {}).get(catalog_entry["tap_stream_id"], {}).pop("BatchIDs", None)
             bookmark = (
                 state.get("bookmarks", {})
                 .get(catalog_entry["tap_stream_id"], {})
@@ -506,18 +465,14 @@ async def sync_catalog_entry(sf, catalog_entry, state):
 
         # Tables with a replication_key or an empty bookmark will emit an
         # activate_version at the beginning of their sync
-        bookmark_is_empty = (
-            state.get("bookmarks", {}).get(catalog_entry["tap_stream_id"]) is None
-        )
+        bookmark_is_empty = state.get("bookmarks", {}).get(catalog_entry["tap_stream_id"]) is None
 
         if replication_key or bookmark_is_empty:
             singer.write_message(activate_version_message)
             state = singer.write_bookmark(
                 state, catalog_entry["tap_stream_id"], "version", stream_version
             )
-        await loop.run_in_executor(
-            None, sync_stream, sf, catalog_entry, state, state_msg_threshold
-        )
+        await loop.run_in_executor(None, sync_stream, sf, catalog_entry, state, state_msg_threshold)
         LOGGER.info("Completed sync for %s", stream_name)
 
 
@@ -535,8 +490,7 @@ def do_sync(sf, catalog, state):
         # Schedule one task for each catalog entry to be extracted
         # and run them concurrently.
         sync_tasks = (
-            sync_catalog_entry(sf, catalog_entry, state)
-            for catalog_entry in streams_to_sync
+            sync_catalog_entry(sf, catalog_entry, state) for catalog_entry in streams_to_sync
         )
         tasks = asyncio.gather(*sync_tasks)
         loop.run_until_complete(tasks)

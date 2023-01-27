@@ -8,13 +8,9 @@ from simple_salesforce import SalesforceLogin
 LOGGER = logging.getLogger(__name__)
 
 
-OAuthCredentials = namedtuple(
-    "OAuthCredentials", ("client_id", "client_secret", "refresh_token")
-)
+OAuthCredentials = namedtuple("OAuthCredentials", ("client_id", "client_secret", "refresh_token"))
 
-PasswordCredentials = namedtuple(
-    "PasswordCredentials", ("username", "password", "security_token")
-)
+PasswordCredentials = namedtuple("PasswordCredentials", ("username", "password", "security_token"))
 
 
 def parse_credentials(config):
@@ -101,15 +97,11 @@ class SalesforceAuthOAuth(SalesforceAuth):
         except Exception as e:
             error_message = str(e)
             if resp:
-                error_message = error_message + ", Response from Salesforce: {}".format(
-                    resp.text
-                )
+                error_message = error_message + ", Response from Salesforce: {}".format(resp.text)
             raise Exception(error_message) from e
         finally:
             LOGGER.info("Starting new login timer")
-            self.login_timer = threading.Timer(
-                self.REFRESH_TOKEN_EXPIRATION_PERIOD, self.login
-            )
+            self.login_timer = threading.Timer(self.REFRESH_TOKEN_EXPIRATION_PERIOD, self.login)
             self.login_timer.start()
 
 
