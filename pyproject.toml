@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "tap-salesforce"
+version = "0.1.0"
+description = "tap-salesforce is a Singer tap for Salesforce, built with the Meltano Singer SDK."
+authors = ["Alex Butler"]
+keywords = ["ELT", "Salesforce"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/z3z1ma/tap-salesforce"
+repository = "https://github.com/z3z1ma/tap-salesforce"
+
+[tool.poetry.dependencies]
+python = "<3.12,>=3.8"
+simple-salesforce = ">=1.0.0,<2"
+singer-sdk = ">=0.19.0,<1"
+requests = ">=2.28.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.2.1"
+flake8 = ">=5.0.4"
+black = ">=22.12.0"
+pydocstyle = ">=6.2.1"
+mypy = ">=0.991"
+isort = ">=5.12.0"
+types-requests = ">=2.28.11.7"
+genson = "^1.2.2"
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+src_paths = "tap_salesforce"
+
+[build-system]
+requires = ["poetry-core>=1.0.8"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+tap-salesforce = 'tap_salesforce.tap:TapSalesforce.cli'
